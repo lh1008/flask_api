@@ -98,17 +98,14 @@ def login():
 		passw = forms.get('password')
 		m = hash_password(passw)
 		
-		r = select(User).where(User.email == f'{email}')
-		rec = session.execute(r)
-		row = session.execute(select(User)).first()
-		print('Row:', row[0])
-		
-		for user_object in rec.scalars():
-			if m == user_object.password:
-				client_id = f'{user_object.client_id}'
+		result = session.execute(select(User.client_id, User.name, User.email, User.password).where(User.email == f'{email}'))
+		for u in result:
+			if m == u.password:
+				client_id = f'{u.client_id}'
+				print(client_id)
 				payload_data = {
-				"client_id": f'{user_object.client_id}',
-				"name": f'{user_object.name}'
+				"client_id": f'{u.client_id}',
+				"name": f'{u.name}'
 				}
 				secret = app.secret_key
 				token = jwt.encode(
@@ -137,3 +134,7 @@ if __name__ == '__main__':
 
 
 # curl -d "name=Leo&email=leo@insert.com&password=hello" -X POST http://127.0.0.1:5000/users
+# login curl -d "email=leo@insert.com&password=hello" -X POST http://127.0.0.1:5000/login
+
+# curl -d "name=Luis&email=luis@insert.com&password=yellow" -X POST http://127.0.0.1:5000/users
+# login curl -d "email=luis@insert.com&password=yellow" -X POST http://127.0.0.1:5000/login
