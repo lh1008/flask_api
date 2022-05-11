@@ -44,8 +44,8 @@ def hash_password(password):
 	return h
 
 def verify_token(token, client_id):
-	headers = jwt.get_unverified_header(token)
-	t = jwt.decode(token, key=app.secret_key, algorithms=[headers['alg']])
+	header = jwt.get_unverified_header(token)
+	t = jwt.decode(token, key=app.secret_key, algorithms=[header['alg']])
 	if t['client_id'] == client_id:
 		return True
 	else:
@@ -74,19 +74,29 @@ def create_user():
 
 @app.route('/users', methods=['GET'])
 def get_users():
-    with Session(engine) as session:
-        query = select([User.client_id, User.name, User.email, User.password])
-        res = session.execute(query)
-        output = list()
+	#auth = request.headers.get('Authorization')
+	#print(auth)
+	if request.headers.get('Authorization'):
+		request.headers['Authorization']
+		print(request.headers.get('Authorization'))
+		with Session(engine) as session:
+			query = select([User.client_id, User.name, User.email, User.password])
+			res = session.execute(query)
+			output = list()
 
-        for row in res:
-            output.append(dict(row))
+			for row in res:
+				output.append(dict(row))
 
-        r = select(User).where(User.name == 'Leo')
-        rec = session.execute(r)
-        for user_object in rec.scalars():
-        	print(f'{user_object.name}')
-    return jsonify(output)
+			r = select(User).where(User.name == 'Leo')
+			rec = session.execute(r)
+			for user_object in rec.scalars():
+				print(f'{user_object.name}')
+			return jsonify(output)
+	else:
+		response_object = {
+			"status": "Not Authorized"
+		}
+		return response_object
 
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -117,7 +127,7 @@ def login():
 					'message': 'Successful login',
 					'token': verify_token(token, client_id)
 				}
-				return response_object
+				return token
 			else:
 				response_object = {
 					'status': False,
@@ -132,9 +142,12 @@ if __name__ == '__main__':
 	Base.metadata.drop_all(engine)
 	Base.metadata.create_all(engine)
 
-
-# curl -d "name=Leo&email=leo@insert.com&password=hello" -X POST http://127.0.0.1:5000/users
-# login curl -d "email=leo@insert.com&password=hello" -X POST http://127.0.0.1:5000/login
+# Create user and login
+# curl -d "name=Nicolas&email=nico@insert.com&password=hello" -X POST http://127.0.0.1:5000/users
+# login curl -d "email=nico@insert.com&password=hello" -X POST http://127.0.0.1:5000/login
 
 # curl -d "name=Luis&email=luis@insert.com&password=yellow" -X POST http://127.0.0.1:5000/users
 # login curl -d "email=luis@insert.com&password=yellow" -X POST http://127.0.0.1:5000/login
+
+# Authorization Header
+# curl -H "Authorization: Bearer <add_token>" http://127.0.0.1:5000/users
