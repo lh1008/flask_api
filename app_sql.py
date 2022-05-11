@@ -74,24 +74,23 @@ def create_user():
 
 @app.route('/users', methods=['GET'])
 def get_users():
-	#auth = request.headers.get('Authorization')
-	#print(auth)
 	if request.headers.get('Authorization'):
-		request.headers['Authorization']
-		print(request.headers.get('Authorization'))
-		with Session(engine) as session:
-			query = select([User.client_id, User.name, User.email, User.password])
-			res = session.execute(query)
-			output = list()
+		auth = request.headers['Authorization']
+		client_id = request.headers['client_id']
+		if verify_token(auth, client_id) is True:
+			with Session(engine) as session:
+				query = select([User.client_id, User.name, User.email, User.password])
+				res = session.execute(query)
+				output = list()
 
-			for row in res:
-				output.append(dict(row))
-
-			r = select(User).where(User.name == 'Leo')
-			rec = session.execute(r)
-			for user_object in rec.scalars():
-				print(f'{user_object.name}')
-			return jsonify(output)
+				for row in res:
+					output.append(dict(row))
+				return jsonify(output)
+		else:
+			response_object = {
+			"status": "Wrong token!"
+		}
+		return response_object
 	else:
 		response_object = {
 			"status": "Not Authorized"
@@ -112,7 +111,6 @@ def login():
 		for u in result:
 			if m == u.password:
 				client_id = f'{u.client_id}'
-				print(client_id)
 				payload_data = {
 				"client_id": f'{u.client_id}',
 				"name": f'{u.name}'
@@ -122,12 +120,7 @@ def login():
 					payload = payload_data,
 					key = secret
 					)
-				response_object = {
-					'status': True,
-					'message': 'Successful login',
-					'token': verify_token(token, client_id)
-				}
-				return token
+				return token + " " + client_id
 			else:
 				response_object = {
 					'status': False,
@@ -143,6 +136,10 @@ if __name__ == '__main__':
 	Base.metadata.create_all(engine)
 
 # Create user and login
+
+# curl -d "name=Leo&email=leo@insert.com&password=hello" -X POST http://127.0.0.1:5000/users
+# login curl -d "email=leo@insert.com&password=hello" -X POST http://127.0.0.1:5000/login
+
 # curl -d "name=Nicolas&email=nico@insert.com&password=hello" -X POST http://127.0.0.1:5000/users
 # login curl -d "email=nico@insert.com&password=hello" -X POST http://127.0.0.1:5000/login
 
@@ -150,4 +147,6 @@ if __name__ == '__main__':
 # login curl -d "email=luis@insert.com&password=yellow" -X POST http://127.0.0.1:5000/login
 
 # Authorization Header
-# curl -H "Authorization: Bearer <add_token>" http://127.0.0.1:5000/users
+#curl -H "Authorization: eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJjbGllbnRfaWQiOiJlYjFkNGFjYS0yYTQ2LTRmYzMtOTYzYi1iZjM3MWIxYmUzYjciLCJuYW1lIjoiTHVpcyJ9.hA8hW12UsTUlr4QHs8_CL6C8r1haTCnMEUDr28lhuoY" \
+#     -H "client_id: eb1d4aca-2a46-4fc3-963b-bf371b1be3b7" \
+#    http://127.0.0.1:5000/users
