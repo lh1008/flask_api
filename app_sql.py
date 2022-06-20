@@ -38,12 +38,14 @@ class User(Base):
 		return f'User(client_id={self.client_id!r}, name={self.name!r}, email={self.email!r}, password={self.password!r})'
 
 def hash_password(password):
+	# Method to hash/encrypt a text
 	passw = password.encode()
 	salt = b'hello'
 	h = hashlib.scrypt(passw, salt=salt, n=2048, r=8, p=1, dklen=32).hex()
 	return h
 
 def verify_token(token, client_id):
+	# Method to verify a sent token to route /users
 	header = jwt.get_unverified_header(token)
 	t = jwt.decode(token, key=app.secret_key, algorithms=[header['alg']])
 	if t['client_id'] == client_id:
@@ -57,8 +59,9 @@ def index():
         return 'Index'
 
 
-@app.route('/users', methods=['POST'])
+@app.route('/users/', methods=['POST'])
 def create_user():
+	# Route that will create a user given a set of data
 	with Session(engine) as session:
 		
 		forms = request.form 
@@ -74,6 +77,7 @@ def create_user():
 
 @app.route('/users', methods=['GET'])
 def get_users():
+	# Route to list users with a validated token
 	if request.headers.get('Authorization'):
 		auth = request.headers['Authorization']
 		client_id = request.headers['client_id']
@@ -100,6 +104,7 @@ def get_users():
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
+	# Route to log in a user 
 	with Session(engine) as session:
 
 		forms = request.form
@@ -108,12 +113,12 @@ def login():
 		m = hash_password(passw)
 		
 		result = session.execute(select(User.client_id, User.name, User.email, User.password).where(User.email == f'{email}'))
-		for u in result:
-			if m == u.password:
-				client_id = f'{u.client_id}'
+		for client_id, name, email, password in result:
+			if m == password:
+				client_id = f'{client_id}'
 				payload_data = {
-				"client_id": f'{u.client_id}',
-				"name": f'{u.name}'
+				"client_id": f'{client_id}',
+				"name": f'{name}'
 				}
 				secret = app.secret_key
 				token = jwt.encode(
@@ -138,7 +143,9 @@ if __name__ == '__main__':
 # Create user and login
 
 # curl -d "name=Leo&email=leo@insert.com&password=hello" -X POST http://127.0.0.1:5000/users
+# curl -d "name=Leo&email=leos@insert.com&password=bear" -X POST http://127.0.0.1:5000/users
 # login curl -d "email=leo@insert.com&password=hello" -X POST http://127.0.0.1:5000/login
+# login curl -d "email=leos@insert.com&password=bear" -X POST http://127.0.0.1:5000/login
 
 # curl -d "name=Nicolas&email=nico@insert.com&password=hello" -X POST http://127.0.0.1:5000/users
 # login curl -d "email=nico@insert.com&password=hello" -X POST http://127.0.0.1:5000/login
@@ -147,6 +154,6 @@ if __name__ == '__main__':
 # login curl -d "email=luis@insert.com&password=yellow" -X POST http://127.0.0.1:5000/login
 
 # Authorization Header
-#curl -H "Authorization: eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJjbGllbnRfaWQiOiJlYjFkNGFjYS0yYTQ2LTRmYzMtOTYzYi1iZjM3MWIxYmUzYjciLCJuYW1lIjoiTHVpcyJ9.hA8hW12UsTUlr4QHs8_CL6C8r1haTCnMEUDr28lhuoY" \
-#     -H "client_id: eb1d4aca-2a46-4fc3-963b-bf371b1be3b7" \
+#curl -H "Authorization: eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJjbGllbnRfaWQiOiI2N2M0ZWU5ZC1kNmE4LTQyNmYtOTc2MS1jMTNiOGU4Y2EyZDQiLCJuYW1lIjoiTGVvIn0.PFO2fzv3iUaCtc_1wCpU4ICe6_xmVEsc397yacbWwwE" \
+#     -H "client_id: 67c4ee9d-d6a8-426f-9761-c13b8e8ca2d4" \
 #    http://127.0.0.1:5000/users
